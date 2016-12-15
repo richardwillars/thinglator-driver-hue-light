@@ -1,0 +1,24 @@
+{
+  "name": "thinglator-driver-hue-light",
+  "license": "MIT",
+  "description": "Allows the Thinglator platform to talk to Philips Hue lights",
+  "version": "1.0.1",
+  "maintainers": [
+    {
+      "name": "Richard Willars",
+      "email": "richard@richardwillars.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/richardwillars/thinglator-driver-hue-light.git"
+  },
+  "dependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.0.2",
+    "node-hue-api": "^2.2.0"
+  },
+  "scripts": {
+    "test": "node_modules/.bin/_mocha --recursive"
+  }
+}
