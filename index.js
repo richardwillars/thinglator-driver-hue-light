@@ -1,9 +1,7 @@
-'use strict';
+const hue = require('node-hue-api');
+const HueApi = require('node-hue-api').HueApi;
 
-var hue = require('node-hue-api');
-var HueApi = require("node-hue-api").HueApi;
-
-var bulbCapabilities = {
+const bulbCommands = {
     'Extended color light': {
         setHSBState: true,
         setBrightnessState: true,
@@ -12,29 +10,37 @@ var bulbCapabilities = {
     'Dimmable light': {
         setBrightnessState: true,
         setBooleanState: true
+    },
+    'Color temperature light': {
+        setBrightnessState: true,
+        setBooleanState: true
     }
 };
 
 class HueLightDriver {
-    constructor(driverSettingsObj, interfaces) {
-        var self = this;
-        this.authenticatedHueApi = null;
-        this.driverSettingsObj = driverSettingsObj;
-
+    constructor() {
         this.driverSettings = {
             user: null,
             bridgeAddress: null
         };
+        this.nodeIdCache = {};
+        this.commsInterface = null;
+        this.authenticatedHueApi = null;
+    }
+    init(driverSettingsObj, commsInterface, eventEmitter) {
+        this.driverSettingsObj = driverSettingsObj;
 
-        this.driverSettingsObj.get().then(function(settings) {
-            self.driverSettings = settings;
-            if((self.driverSettings.user) && (self.driverSettings.bridgeAddress)) {
-                self.authenticatedHueApi = new HueApi(self.driverSettings.bridgeAddress, self.driverSettings.user);
+        this.eventEmitter = eventEmitter;
+        this.commsInterface = commsInterface;
+
+        return this.driverSettingsObj.get().then((settings) => {
+            this.driverSettings = settings;
+            if ((this.driverSettings.user) && (this.driverSettings.bridgeAddress)) {
+                this.authenticatedHueApi = new HueApi(this.driverSettings.bridgeAddress, this.driverSettings.user);
             }
         });
-
-        this.interface = interfaces[this.getInterface()];
     }
+
 
     getName() {
         return 'hue-light';
@@ -52,235 +58,210 @@ class HueLightDriver {
         return this.eventEmitter;
     }
 
-    setEventEmitter(eventEmitter) {
-        this.eventEmitter = eventEmitter;
-    }
+    initDevices() {
 
-    initDevices(devices) {
-
-    }
-
-    _buildColourString(hue, sat, bri) {
-        return 'hue:' + hue + ' saturation:' + sat + ' brightness:' + bri;
     }
 
     getAuthenticationProcess() {
         return [{
-            type: 'PhysicalAction',
-            message: 'In order to use Philips Hue bulbs you must press the button on your Philips Hue bridge.',
-            next: {
-                http: '/authenticate/light/hue-light/0',
-                socket: {
-                    event: 'authenticationStep',
-                    step: 0
-                }
-            }
+            type: 'ManualAction',
+            message: 'In order to use Philips Hue bulbs you must press the button on your Philips Hue bridge.'
         }];
     }
 
-    setAuthenticationStep0(props) {
-        var self = this;
-        var hueApi = new HueApi();
-        var bridgeAddress = null;
-        return hue.nupnpSearch().then(function(bridges) {
-            if(!bridges[0]) {
-                var e = new Error('Unable to find the Philips Hue bridge on your network');
+    setAuthenticationStep0() {
+        const hueApi = new HueApi();
+        let bridgeAddress = null;
+        return hue.nupnpSearch().then((bridges) => {
+            if (!bridges[0]) {
+                const e = new Error('Unable to find the Philips Hue bridge on your network');
                 e.type = 'Connection';
                 throw e;
             }
             bridgeAddress = bridges[0].ipaddress;
-            return hueApi.registerUser(bridges[0].ipaddress, 'Thinglator hue light driver');
-        }).then(function(newUser) {
-            self.driverSettings.user = newUser;
-            self.driverSettings.bridgeAddress = bridgeAddress;
-            self.authenticatedHueApi = new HueApi(self.driverSettings.bridgeAddress, self.driverSettings.user);
-            return self.driverSettingsObj.set(self.driverSettings);
-        }).then(function() {
-            return {
-                "success": true
-            };
-        }).catch(function(err) {
-            return {
-                "success": false,
-                "message": err.message
-            };
-        });
+            return hueApi.registerUser(bridges[0].ipaddress, 'Thinglator hue-light driver');
+        }).then((newUser) => {
+            this.driverSettings.user = newUser;
+            this.driverSettings.bridgeAddress = bridgeAddress;
+            this.authenticatedHueApi = new HueApi(this.driverSettings.bridgeAddress, this.driverSettings.user);
+            return this.driverSettingsObj.set(this.driverSettings);
+        }).then(() => ({
+            success: true
+        })).catch(err => ({
+            success: false,
+            message: err.message
+        }));
     }
 
-    _checkAuthenticated() {
-        return new Promise((resolve,reject) => {
-            if((this.driverSettings.user===null) || (this.driverSettings.bridgeAddress===null)) {
-                var err = new Error('Not authenticated');
+    checkAuthenticated() {
+        return new Promise((resolve, reject) => {
+            if ((this.driverSettings.user === null) || (this.driverSettings.bridgeAddress === null)) {
+                const err = new Error('Not authenticated');
                 err.type = 'Authentication';
                 reject(err);
-            }
-            else {
+            } else {
                 resolve(true);
             }
         });
     }
 
     discover() {
-        var self = this;
-        return this._checkAuthenticated().then(function() {
-            return self.authenticatedHueApi.lights();
-        }).then(function(response) {
-            var devices = [];   
-            if(response.lights) {
-                for (var i in response.lights) {
-                    let capabilities = {};
-                    if(bulbCapabilities[response.lights[i].type]) {
-                        capabilities = bulbCapabilities[response.lights[i].type];
+        return this.checkAuthenticated().then(() => this.authenticatedHueApi.lights()).then((response) => {
+            const devices = [];
+            if (response.lights) {
+                response.lights.forEach((light) => {
+                    let commands = {};
+                    if (bulbCommands[light.type]) {
+                        commands = bulbCommands[light.type];
                     }
-                    var device = {
-                        deviceId: response.lights[i].id,
-                        name: response.lights[i].name,
-                        capabilities: capabilities
+                    const device = {
+                        deviceId: light.id,
+                        name: light.name,
+                        commands
                     };
                     devices.push(device);
-                }
+                });
             }
             return devices;
         })
-        .catch(function(err) {
-            err.type = 'Authentication';
-            throw err;
+        .catch((err) => {
+            const newErr = err;
+            newErr.type = 'Authentication';
+            throw newErr;
         });
     }
-    _translateFromDriverHue(val) {
-        //comes in the scale 0-65535. Needs to be 0-360
-        if(!val) {
-            return null;
+
+    translateFromDriverHue(val) {
+        // comes in the scale 0-65535. Needs to be 0-360
+        if (!val) {
+            return 0;
         }
-        return parseInt((val/65535)*360);
+        return parseInt((val / 65535) * 360, 10);
     }
-    _translateToDriverHue(val) {
-        //comes in the scale 0-360. Needs to be 0-65535
-        return parseInt((val/360)*65535);
+
+    translateToDriverHue(val) {
+        // comes in the scale 0-360. Needs to be 0-65535
+        return parseInt((val / 360) * 65535, 10);
     }
-    _translateFromDriverBrightness(val) {
-        //comes in the scale 0-255. Needs to be 0-1
+
+    translateFromDriverBrightness(val) {
+        // comes in the scale 0-255. Needs to be 0-1
         return val / 255;
     }
-    _translateToDriverBrightness(val) {
-        //comes in the scale 0-1. Needs to be 0-255
-        return parseInt(val * 255);
+
+    translateToDriverBrightness(val) {
+        // comes in the scale 0-1. Needs to be 0-255
+        return parseInt(val * 255, 10);
     }
-    _translateFromDriverSaturation(val) {
-        //comes in the scale 0-255. Needs to be 0-1
-        if(!val) {
-            return null;
+
+    translateFromDriverSaturation(val) {
+        // comes in the scale 0-255. Needs to be 0-1
+        if (!val) {
+            return 0;
         }
-        return val / 255
+        return val / 255;
     }
-    _translateToDriverSaturation(val) {
-        //comes in the scale 0-1. Needs to be 0-255
-        return parseInt(val * 255);
+
+    translateToDriverSaturation(val) {
+        // comes in the scale 0-1. Needs to be 0-255
+        return parseInt(val * 255, 10);
     }
-    _translateToDriverDuration(val) {
-        return parseInt(val*10);
+
+    translateToDriverDuration(val) {
+        return parseInt(val * 10, 10);
     }
-    capability_setHSBState(device, props) {
-        var self = this;
-        var state = {
+
+    command_setHSBState(device, props) { // eslint-disable-line camelcase
+        const state = {
             on: true,
-            bri: self._translateToDriverBrightness(props.colour.brightness),
-            sat: self._translateToDriverSaturation(props.colour.saturation),
-            hue: self._translateToDriverHue(props.colour.hue),
-            transitiontime: self._translateToDriverDuration(props.duration)
+            bri: this.translateToDriverBrightness(props.colour.brightness),
+            sat: this.translateToDriverSaturation(props.colour.saturation),
+            hue: this.translateToDriverHue(props.colour.hue),
+            transitiontime: this.translateToDriverDuration(props.duration)
         };
 
-        return self.authenticatedHueApi.setLightState(device.specs.deviceId, state)
-            .then(function() {
-                return self.authenticatedHueApi.lightStatus(device.specs.deviceId);
-            }).then(function(lightState) {
-                var newLightState = {
+        return this.authenticatedHueApi.setLightState(device.specs.deviceId, state)
+            .then(() => this.authenticatedHueApi.lightStatus(device.specs.deviceId)).then((lightState) => {
+                const newLightState = {
                     on: lightState.state.on,
                     colour: {
-                        hue: self._translateFromDriverHue(lightState.state.hue),
-                        saturation: self._translateFromDriverSaturation(lightState.state.sat),
-                        brightness: self._translateFromDriverBrightness(lightState.state.bri)
+                        hue: this.translateFromDriverHue(lightState.state.hue),
+                        saturation: this.translateFromDriverSaturation(lightState.state.sat),
+                        brightness: this.translateFromDriverBrightness(lightState.state.bri)
                     }
                 };
 
-                return newLightState;
+                this.eventEmitter.emit('state', 'hue-light', device._id, newLightState);
             })
-            .catch(function(e) {
+            .catch((e) => {
+                let err;
                 if (!e.type) {
-                    var err = new Error(e.error);
+                    err = new Error(e.error);
                     err.type = 'Device';
-                }
-                else {
-                    var err = e;
+                } else {
+                    err = e;
                 }
                 throw err;
             });
     }
 
-    capability_setBrightnessState(device, props) {
-        var self = this;
-        var state = {
+    command_setBrightnessState(device, props) { // eslint-disable-line camelcase
+        const state = {
             on: true,
-            bri: self._translateToDriverBrightness(props.colour.brightness),
-            transitiontime: self._translateToDriverDuration(props.duration)
+            bri: this.translateToDriverBrightness(props.colour.brightness),
+            transitiontime: this.translateToDriverDuration(props.duration)
         };
 
-        return self.authenticatedHueApi.setLightState(device.specs.deviceId, state)
-            .then(function() {
-                return self.authenticatedHueApi.lightStatus(device.specs.deviceId);
-            }).then(function(lightState) {
-                var newLightState = {
+        return this.authenticatedHueApi.setLightState(device.specs.deviceId, state)
+            .then(() => this.authenticatedHueApi.lightStatus(device.specs.deviceId)).then((lightState) => {
+                const newLightState = {
                     on: lightState.state.on,
                     colour: {
-                        hue: self._translateFromDriverHue(lightState.state.hue),
-                        saturation: self._translateFromDriverSaturation(lightState.state.sat),
-                        brightness: self._translateFromDriverBrightness(lightState.state.bri)
+                        hue: this.translateFromDriverHue(lightState.state.hue),
+                        saturation: this.translateFromDriverSaturation(lightState.state.sat),
+                        brightness: this.translateFromDriverBrightness(lightState.state.bri)
                     }
                 };
-
-                return newLightState;
+                this.eventEmitter.emit('state', 'hue-light', device._id, newLightState);
             })
-            .catch(function(e) {
+            .catch((e) => {
+                let err;
                 if (!e.type) {
-                    var err = new Error(e.error);
+                    err = new Error(e.error);
                     err.type = 'Device';
-                }
-                else {
-                    var err = e;
+                } else {
+                    err = e;
                 }
                 throw err;
             });
     }
 
-    capability_setBooleanState(device, props) {
-        var self = this;
-        var state = {
+    command_setBooleanState(device, props) { // eslint-disable-line camelcase
+        const state = {
             on: props.on,
-            transitiontime: self._translateToDriverDuration(props.duration)
+            transitiontime: this.translateToDriverDuration(props.duration)
         };
 
-        return self.authenticatedHueApi.setLightState(device.specs.deviceId, state)
-            .then(function() {
-                return self.authenticatedHueApi.lightStatus(device.specs.deviceId);
-            }).then(function(lightState) {
-                var newLightState = {
+        return this.authenticatedHueApi.setLightState(device.specs.deviceId, state)
+            .then(() => this.authenticatedHueApi.lightStatus(device.specs.deviceId)).then((lightState) => {
+                const newLightState = {
                     on: lightState.state.on,
                     colour: {
-                        hue: self._translateFromDriverHue(lightState.state.hue),
-                        saturation: self._translateFromDriverSaturation(lightState.state.sat),
-                        brightness: self._translateFromDriverBrightness(lightState.state.bri)
+                        hue: this.translateFromDriverHue(lightState.state.hue),
+                        saturation: this.translateFromDriverSaturation(lightState.state.sat),
+                        brightness: this.translateFromDriverBrightness(lightState.state.bri)
                     }
                 };
 
-                return newLightState;
+                this.eventEmitter.emit('state', 'hue-light', device._id, newLightState);
             })
-            .catch(function(e) {
+            .catch((e) => {
+                let err;
                 if (!e.type) {
-                    var err = new Error(e.error);
+                    err = new Error(e.error);
                     err.type = 'Device';
-                }
-                else {
-                    var err = e;
+                } else {
+                    err = e;
                 }
                 throw err;
             });

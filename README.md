@@ -6,7 +6,7 @@ Allows the Thinglator platform to control Philips Hue lights on your local netwo
 ## Requirements
 - node.js
 - Thinglator - https://github.com/richardwillars/thinglator
-- LAN connection - Ethernet or WiFi (it uses HTTP to talk to the Philips Hue bridge)
+- Active Internet connection - Ethernet or WiFi (it uses HTTP to talk to the Philips Hue servers)
 
 ## Installation
 Navigate to the root of your Thinglator installation and run
