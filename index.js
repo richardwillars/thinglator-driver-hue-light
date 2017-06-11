@@ -117,7 +117,10 @@ class HueLightDriver {
                     const device = {
                         deviceId: light.id,
                         name: light.name,
-                        commands
+                        commands,
+                        events: {
+                            lightState: true
+                        }
                     };
                     devices.push(device);
                 });
@@ -191,7 +194,7 @@ class HueLightDriver {
                     }
                 };
 
-                this.eventEmitter.emit('state', 'hue-light', device._id, newLightState);
+                this.eventEmitter.emit('lightState', 'hue-light', device._id, newLightState);
             })
             .catch((e) => {
                 let err;
@@ -222,7 +225,7 @@ class HueLightDriver {
                         brightness: this.translateFromDriverBrightness(lightState.state.bri)
                     }
                 };
-                this.eventEmitter.emit('state', 'hue-light', device._id, newLightState);
+                this.eventEmitter.emit('lightState', 'hue-light', device._id, newLightState);
             })
             .catch((e) => {
                 let err;
