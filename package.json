@@ -2,7 +2,7 @@
   "name": "thinglator-driver-hue-light",
   "license": "MIT",
   "description": "Allows the Thinglator platform to talk to Philips Hue lightbulbs",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "maintainers": [
     {
       "name": "Richard Willars",
@@ -13,30 +13,25 @@
     "type": "git",
     "url": "https://github.com/richardwillars/thinglator-driver-hue-light.git"
   },
-  "devDependencies": {
-    "eslint": "^3.18.0",
-    "eslint-config-airbnb": "^14.1.0",
-    "chai": "^3.5.0",
-    "mocha": "^3.0.2",
-    "mockery": "^1.7.0",
-    "sinon": "^1.17.5",
-    "sinon-chai": "^2.8.0",
-    "eslint-plugin-react": "^6.10.3",
-    "eslint-plugin-import": "^2.2.0",
-    "eslint-plugin-jsx-a11y": "^5.0.3"
-  },
   "peerDependencies": {
-    "thinglator": "0.x"
+    "thinglator": "1.x"
+  },
+  "dependencies": {
+    "node-hue-api": "^2.4.2"
+  },
+  "devDependencies": {
+    "eslint": "^4.7.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "jest": "^21.2.1"
   },
   "scripts": {
-    "test": "npm run lint && node_modules/.bin/_mocha --recursive",
-    "test:watch": "node_modules/.bin/_mocha --recursive --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "lint": "eslint --ext js ."
   },
   "engines": {
-    "node": ">=6.10.0"
+    "node": ">=8.0.0"
   },
-  "dependencies": {
-    "node-hue-api": "^2.2.0"
-  }
+  "main": "index.js"
 }
