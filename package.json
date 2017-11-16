@@ -13,6 +13,9 @@
     "type": "git",
     "url": "https://github.com/richardwillars/thinglator-driver-hue-light.git"
   },
+  "peerDependencies": {
+    "thinglator": "1.x"
+  },
   "dependencies": {
     "node-hue-api": "^2.4.2"
   },
@@ -21,9 +24,6 @@
     "eslint-config-airbnb-base": "^12.1.0",
     "eslint-plugin-import": "^2.8.0",
     "jest": "^21.2.1"
-  },
-  "peerDependencies": {
-    "thinglator": "0.x"
   },
   "scripts": {
     "test": "jest",
