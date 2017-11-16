@@ -2,7 +2,7 @@
   "name": "thinglator-driver-hue-light",
   "license": "MIT",
   "description": "Allows the Thinglator platform to talk to Philips Hue lightbulbs",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "maintainers": [
     {
       "name": "Richard Willars",
