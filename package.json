@@ -1,8 +1,9 @@
 {
   "name": "thinglator-driver-hue-light",
   "license": "MIT",
-  "description": "Allows the Thinglator platform to talk to Philips Hue lightbulbs",
-  "version": "2.0.0",
+  "description":
+    "Allows the Thinglator platform to talk to Philips Hue lightbulbs",
+  "version": "3.0.0",
   "maintainers": [
     {
       "name": "Richard Willars",
@@ -13,25 +14,35 @@
     "type": "git",
     "url": "https://github.com/richardwillars/thinglator-driver-hue-light.git"
   },
-  "peerDependencies": {
-    "thinglator": "1.x"
-  },
   "dependencies": {
     "node-hue-api": "^2.4.2"
   },
+  "peerDependencies": {
+    "thinglator": "3.x"
+  },
   "devDependencies": {
-    "eslint": "^4.7.0",
+    "eslint": "^4.18.2",
     "eslint-config-airbnb-base": "^12.1.0",
-    "eslint-plugin-import": "^2.8.0",
-    "jest": "^21.2.1"
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-jest": "^21.14.0",
+    "eslint-plugin-prettier": "^2.6.0",
+    "husky": "^0.14.3",
+    "jest": "^22.4.2",
+    "lint-staged": "^7.0.0",
+    "prettier": "^1.11.1"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest && yarn lint",
     "test:watch": "jest --watch",
-    "lint": "eslint --ext js ."
+    "precommit": "lint-staged",
+    "lint": "eslint **/*.js"
+  },
+  "lint-staged": {
+    "*.{js,json,css,md}": ["prettier --write", "git add"]
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=8.9.0"
   },
   "main": "index.js"
 }
