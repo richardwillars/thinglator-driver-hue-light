@@ -13,6 +13,7 @@ Allows the Thinglator platform to control Philips Hue lights on your local netwo
 Navigate to the root of your Thinglator installation and run:
 
 > yarn add thinglator-driver-hue-light
+
 > yarn dev
 
 # Installation for development
@@ -20,6 +21,7 @@ Navigate to the root of your Thinglator installation and run:
 Navigate to the root of the thinglator-driver-hue-light project and run:
 
 > yarn install
+
 > yarn link
 
 Navigate to the root of your Thinglator installation and run:
