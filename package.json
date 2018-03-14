@@ -3,7 +3,7 @@
   "license": "MIT",
   "description":
     "Allows the Thinglator platform to talk to Philips Hue lightbulbs",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "maintainers": [
     {
       "name": "Richard Willars",
